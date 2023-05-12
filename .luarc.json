@@ -1,0 +1,40 @@
+{
+  "Lua": {
+    "diagnostics": {
+      "globals": [
+        "listFiles",
+        "log",
+        "logJson",
+        "logTable",
+        "print",
+        "printJson",
+        "printTable",
+        "require",
+        "action_wheel",
+        "animations",
+        "avatar",
+        "client",
+        "config",
+        "events",
+        "figuraMetatables",
+        "host",
+        "keybinds",
+        "matrices",
+        "models",
+        "nameplate",
+        "particles",
+        "pings",
+        "player",
+        "renderer",
+        "sounds",
+        "textures",
+        "type",
+        "user",
+        "vanilla_model",
+        "vec",
+        "vectors",
+        "world"
+      ]
+    }
+  }
+}
