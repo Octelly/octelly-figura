@@ -5,7 +5,7 @@ on:
 jobs:
   check_syntax:
     name: Check syntax
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Install LUA
         uses: leafo/gh-actions-lua@v9
