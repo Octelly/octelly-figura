@@ -1,0 +1,52 @@
+(action_page, halo_model) ->
+
+    halo_model\setParentType "WORLD"
+
+    halo_toggle = with action_page\newAction!
+        \setItem "minecraft:iron_nugget"
+        \setToggleItem "minecraft:gold_nugget"
+        \setTitle "Halo OFF"
+        \setToggleTitle "Halo ON"
+        \onToggle (bool) -> pings.halo_toggle bool
+        \setToggled halo_model\getVisible!
+
+    pings.halo_toggle = (state) ->
+        if halo_model\getVisible! != state
+            halo_model\setVisible state
+            pitch = if state then 1.2 else 0.8
+            sounds\playSound "minecraft:block.note_block.chime",
+                             player\getPos!, 1, pitch, false
+
+    for anim in *animations\getAnimations!
+        if anim\getName! in {"halo_float", "halo_rotate"}
+            anim\play!
+    
+    halo_particle_delta = 0
+    halo_particles_tick = () ->
+        if halo_model\getVisible!
+            if halo_particle_delta > (15 + math.floor(math.random!*60))
+                particles\newParticle "minecraft:instant_effect",
+                                      player\getPos!\add(math.random!*0.4-0.2, 2.2, math.random!*0.4-0.2),
+                                      0, 0, 0
+                halo_particle_delta = 0
+            else
+                halo_particle_delta += 1
+
+    new_player_event = {}
+    if host\isHost!
+        new_player_event[] = () ->
+            pings.halo_toggle halo_toggle\isToggled!
+
+    bruh = () ->
+        {x,y,z} = [x for x in *models.avatars.elly.elly.root.Head\partToWorldMatrix!\getColumn(4)[,3]]
+        halo_model\setPos vec(x,y,z)\add(0,0.7,0)\scale(16)
+
+    {
+        TICK: {
+            halo_particles_tick
+        }
+        RENDER: {
+            bruh
+        }
+        new_player: new_player_event
+    }

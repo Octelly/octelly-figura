@@ -1,12 +1,21 @@
+
+default_page = action_wheel\newPage "Root"
+action_wheel\setPage default_page
+action_wheel.rightClick = () ->
+    action_wheel\setPage default_page
+
 {
     name: "Octelly"
     nameplate: {
         ENTITY: {
-            pos: vec 0, 0.05, 0
+            pos: vec 0, 0.2, 0
         }
     }
     models: models.avatars.elly\getChildren!
     vanilla_model: {
         PLAYER: false
     }
+    events: require("avatars.elly.halo")(
+        default_page, models.avatars.elly.halo
+    )
 }
