@@ -1,0 +1,110 @@
+-- FIXME: needs to be adapted to new multi-avatar system
+
+-- setup action wheel
+default_page = action_wheel\newPage "Root"
+action_wheel\setPage default_page
+action_wheel.rightClick = () ->
+    action_wheel\setPage default_page
+
+-- halo
+halo_toggle = default_page\newAction!
+with halo_toggle
+    \setItem "minecraft:iron_nugget"
+    \setToggleItem "minecraft:gold_nugget"
+    \setTitle "Halo OFF"
+    \setToggleTitle "Halo ON"
+    \onToggle (bool) -> pings.halo_toggle bool
+
+halo_model = models.model.root.Halo
+halo_toggle\setToggled halo_model\getVisible!
+
+animations.model.halo_float\play!
+animations.model.halo_rotate\play!
+
+halo_particle_delta = 0
+events.TICK\register () ->
+    if halo_model\getVisible!
+        if halo_particle_delta > (15 + math.floor(math.random!*60))
+            particles\newParticle "minecraft:instant_effect",
+                                  player\getPos!\add(math.random!*0.4-0.2, 2.2, math.random!*0.4-0.2),
+                                  0, 0, 0
+            halo_particle_delta = 0
+        else
+            halo_particle_delta += 1
+
+events.RENDER\register (delta) ->
+    halo_model\setRot 0, player\getBodyYaw(delta)
+
+pings.halo_toggle = (state) ->
+    if halo_model\getVisible! != state
+        halo_model\setVisible state
+        pitch = if state then 1.2 else 0.8
+        sounds\playSound "minecraft:block.note_block.chime",
+                         player\getPos!, 1, pitch, false
+
+if host\isHost!
+    new_player_event[] = () ->
+        pings.halo_toggle halo_toggle\isToggled!
+
+-- blinking
+eyelids_delta = 0
+blink_interval_min = 60
+blink_interval_max = 120
+blink_length = 3
+eyelids = models.model.root.Head.Eyelids
+events.TICK\register () ->
+	if eyelids\getVisible! and eyelids_delta >= blink_length
+		eyelids_delta = 0
+		eyelids\setVisible false
+	elseif eyelids_delta >= blink_interval_min + math.floor(math.random!*(blink_interval_max-blink_interval_min))
+		eyelids_delta = 0
+		eyelids\setVisible true
+	eyelids_delta += 1
+
+-- tail
+tail_frame = 0
+tail_anim_length = 300
+tail_joint_offset = 0.7
+tail_anim_intensity = 13
+tail = {}
+with tail
+    [1] = models.model.root.Body.Tail
+    [2] = [1].Part2
+    [3] = [2].Part3
+    [4] = [3].Part4
+tail_offsets = {
+    -90 + 45,
+    10,
+    -8,
+    -9
+}
+events.RENDER\register (delta, _) ->
+    tail_frame += (1 + player\getVelocity!\length!*10)*delta
+
+    if tail_frame > tail_anim_length
+        tail_frame -= tail_anim_length
+    
+    anim_point = tail_frame / tail_anim_length
+
+    for i, tail_part in ipairs tail
+        tail_part\setRot(math.sin(2 * math.pi * (anim_point + tail_joint_offset*i/#tail)) * (tail_anim_intensity + player\getVelocity!\length!*5) +
+			tail_offsets[i] -
+			math.max(math.min(player\getVelocity!\length!*60, 0), -25)*(#tail/i/#tail), 0, 0)
+
+-- experimenting
+events.RENDER\register (delta, _)  ->
+    if host\isFlying!
+        playerRot = player\getRot(delta)
+        playerY = 180 - (playerRot.y % 360)
+
+        animations.model.freeze_legs_and_arms\play!
+        vel = player\getVelocity!
+        vel.y = 0
+        models.model.root\setRot (-vel\length!*75)+player\getVelocity!.y*60, 0, 0
+        models.model.root.Head\setRot vel\length!*70, 0, 0
+    else
+        animations.model.freeze_legs_and_arms\stop!
+
+--events.TICK\register () ->
+--    print(player\getLookDir!)
+--    print(player\getVelocity!)

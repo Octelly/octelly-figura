@@ -1,0 +1,85 @@
+class Event
+    new: =>
+        @subscribers = {}
+
+    call: (...) =>
+        temp = {}
+        for name, callback in pairs @subscribers
+            ok, ret = pcall callback, ...
+            if not ok
+                msg = "Subscriber \""..name.."\" failed during an event, continuing."
+                if ret != nil
+                    msg ..= "\n" .. ret
+                print msg
+            else
+                temp[name] = ret
+        return temp
+    
+    register: (subscriber, name = #@subscribers + 1) =>
+        if not @subscribers[name] == nil
+            error "Subscriber with name "..name.." already subscribed to this event!", 2
+        @subscribers[name] = subscriber
+
+    remove: (name) =>
+        if @subscribers[name] == nil
+            error "No such subscriber \""..name.."\"!", 2
+        @subscribers[name] = nil
+
+export cevents = {
+    -- discourage manual editting
+    <newindex>: () ->
+}
+
+export new_event = (name, host_only = true) ->
+
+    -- host events only on host
+    if host_only and (not host\isHost!)
+        return () ->
+    
+    -- no event overwrites
+    if not cevents[name] == nil
+        error "Cannot overwrite existing event", 2
+
+    -- create event and return event call function
+    event = Event!
+    rawset(cevents, name, event)
+    return event\call
+
+-- built-in Figura events
+for name, event in pairs events\getEvents!
+    if name == "CHAT_SEND_MESSAGE" or
+       name == "CHAT_RECEIVE_MESSAGE"
+        continue
+    dispatcher = new_event name, false
+    event\register ((...) ->
+        dispatcher ...), "event_manager-"..name.."_wrapper"
+
+
+-- built-in module events
+do
+    dispatcher = new_event "first_tick", false
+
+    cevents.TICK\register (() ->
+        dispatcher!
+        cevents.TICK\remove "first_tick_event"),
+        "first_tick_event"
+
+do
+    dispatcher = new_event "new_player"
+
+    -- initialise player list on first tick
+    players = nil
+    cevents.first_tick\register (() ->
+        players = world.getPlayers!
+        dispatcher!), "first_tick_player_list_init"
+
+    -- run event on new player
+    cevents.TICK\register () ->
+        for key, _ in pairs world.getPlayers!
+            if players[key] == nil
+                dispatcher!
+                break
+
+    -- update player list on new player
+    cevents.new_player\register (() ->
+        players = world.getPlayers!), "update_player_list_cache"

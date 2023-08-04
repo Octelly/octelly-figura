@@ -1,0 +1,93 @@
+nameplate_customization = (key, value) =>
+    if key in {"text"}
+        rawset(@, key, value)
+    else
+        error 'Unsupported key "'..key..'"'
+    
+entity_nameplate_customization = (key, value) =>
+    if key in {"scale","shadow","visible","pos","pivot","light","outline","backgroundColor","text"}
+        rawset(@, key, value)
+    else
+        error 'Unsupported key "'..key..'"'
+
+class Nameplate
+    new: =>
+        @CHAT   = <newindex>: nameplate_customization
+        @ENTITY = <newindex>: entity_nameplate_customization
+        @LIST   = <newindex>: nameplate_customization
+
+    apply: =>
+        with nameplate.CHAT
+            \setText             @CHAT.text
+
+        with nameplate.ENTITY
+            \setScale            @ENTITY.scale
+            \setShadow           @ENTITY.shadow
+            \setVisible          @ENTITY.visible
+            \setPos              @ENTITY.pos
+            \setPivot            @ENTITY.pivot
+            \setLight            @ENTITY.light
+            if outline == nil
+                \setOutline      false
+            else
+                \setOutline      true
+                \setOutlineColor @ENTITY.outline
+            \setBackgroundColor  @ENTITY.backgroundColor
+            \setText             @ENTITY.text
+
+        with nameplate.LIST
+            \setText             @LIST.text
+    
+    set: (property, value, context = {"CHAT", "ENTITY", "LIST"}) =>
+        if type(context) == "string"
+            context = {context}
+        
+        ok, ret = pcall(() ->
+            for x in *context
+                @[x][property] = value)
+        if not ok
+            error ret, 2
+        else
+            @\apply!
+
+    merge: (data, context) =>
+        if not context in {"CHAT", "ENTITY", "LIST"}
+            error "Invalid context!", 2
+        if type(data) != "table"
+            error "Data must be a table of key-value pairs!", 2
+        
+        for key, value in pairs data
+            @[context][key] = value
+
+export class Avatar
+    new: (data) =>
+        @data = data
+
+        -- assign values
+        @nameplate = with Nameplate!
+            \set "text", @data.name
+            \set "visible", true, "ENTITY"
+            if @data.nameplate != nil
+                for context, ctable in pairs @data.nameplate
+                    \merge ctable, context
+
+        -- initialise
+        @\deactivate!
+    
+    setVisible: (bool) =>
+        for model in *@data.models
+            model\setVisible bool
+    
+    activate: (bool = true) =>
+        @\setVisible bool
+
+        if bool
+            @nameplate\apply!
+            for part, visibility in pairs @data.vanilla_model
+                vanilla_model[part]\setVisible visibility
+        else
+            Nameplate!\apply!
+            vanilla_model.ALL\setVisible true
+
+    deactivate: =>
+        @\activate false

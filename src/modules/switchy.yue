@@ -1,0 +1,17 @@
+current_preset = nil
+switchy_loaded = false
+import "modules.event_manager" as :new_event, :cevents
+
+if host\isHost! and switchy\registerSwitchListener != nil
+    switchy_loaded = true
+
+    dispatch_event = new_event "switchy_preset_changed"
+    cevents.switchy_preset_changed\register (preset) -> 
+        current_preset = preset
+
+    switchy\registerSwitchListener (player_id, new_preset, old_preset, enabled_modules) ->
+        if new_preset != current_preset
+            dispatch_event new_preset
+
+export is_switchy_loaded = () -> switchy_loaded
+export get_current_preset = () -> current_preset

@@ -1,0 +1,12 @@
+{
+    name: "Alexia"
+    nameplate: {
+        ENTITY: {
+            pos: vec 0, 0.25, 0
+        }
+    }
+    models: models.avatars.alexia\getChildren!
+    vanilla_model: {
+        PLAYER: false
+    }
+}

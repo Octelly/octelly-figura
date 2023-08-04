@@ -1,0 +1,12 @@
+{
+    name: "Octelly"
+    nameplate: {
+        ENTITY: {
+            pos: vec 0, 0.05, 0
+        }
+    }
+    models: models.avatars.elly\getChildren!
+    vanilla_model: {
+        PLAYER: false
+    }
+}

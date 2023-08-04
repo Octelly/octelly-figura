@@ -1,0 +1,5 @@
+with string
+    .starts_with = (start) =>
+        start == "" or @\sub(1, #start) == start
+    .ends_with = (ending) =>
+        ending == "" or @\sub(-#ending) == ending

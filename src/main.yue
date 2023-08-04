@@ -1,0 +1,53 @@
+-- script init
+print "init"
+
+-- import modules
+require "modules.std_expansion"
+import "modules.event_manager" as :cevents, :new_event
+import "modules.switchy" as :is_switchy_loaded
+import "avatars.classes" as :Avatar
+
+-- CONFIG --
+avatars = {
+    "Elly": Avatar require "avatars.elly.init"
+    "Alexia": Avatar require "avatars.alexia.init"
+}
+
+default = "Elly"
+------------
+
+(
+
+-- handle switching avatars
+active_avatar = nil
+activate_avatar = (avatar) ->
+    if active_avatar != avatar
+        if avatars[avatar] == nil
+            error "Avatar does not exist", 2
+        if active_avatar != nil
+            avatars[active_avatar]\deactivate!
+        active_avatar = avatar
+        avatars[active_avatar]\activate!
+
+-- ping compat
+pings.activate_avatar = (...) ->
+    activate_avatar ...
+
+-- sync with Switchy if present
+if is_switchy_loaded!
+    cevents.switchy_preset_changed\register ((preset) ->
+        if avatars[preset] == nil
+            print 'Preset "'..preset..'" doesn\'t have a corresponding avatar!'
+            return
+        pings.activate_avatar preset), "switchy_avatar_sync"
+
+-- sync active avatar to joining players
+cevents.new_player\register (() ->
+    pings.activate_avatar active_avatar), "sync_avatar_to_new_players"
+
+-- activate default avatar
+cevents.first_tick\register(() ->
+    if host\isHost!
+        pings.activate_avatar default)
+
+
