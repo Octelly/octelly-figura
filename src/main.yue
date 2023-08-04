@@ -16,8 +16,6 @@ avatars = {
 default = "Elly"
 ------------
 
-(
-
 -- handle switching avatars
 active_avatar = nil
 activate_avatar = (avatar) ->
