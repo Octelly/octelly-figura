@@ -3,3 +3,20 @@ with string
         start == "" or @\sub(1, #start) == start
     .ends_with = (ending) =>
         ending == "" or @\sub(-#ending) == ending
+
+with table
+    .concat = (x, y) ->
+        for key, value in pairs y
+            if type(key) == "number"
+                -- if it's a number,
+                -- the key shouldn't matter too much
+                x[] = value
+            else
+                if x[key] == nil
+                    x[key] = value
+                elseif type(x[key]) == "table"
+                    x[key] = table.concat(x[key], value)
+                else
+                    error "Couldn't concatenate something, idk", 2
+        return x
+
