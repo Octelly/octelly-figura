@@ -1,3 +1,5 @@
+import "modules.event_manager" as :cevents
+
 nameplate_customization = (key, value) =>
     if key in {"text"}
         rawset(@, key, value)
@@ -70,6 +72,8 @@ export class Avatar
             if @data.nameplate != nil
                 for context, ctable in pairs @data.nameplate
                     \merge ctable, context
+        
+        @connected_events = {}
 
         -- initialise
         @\deactivate!
@@ -77,6 +81,26 @@ export class Avatar
     setVisible: (bool) =>
         for model in *@data.models
             model\setVisible bool
+
+    connect_events: =>
+        if @data.events == nil
+            return
+
+        if #@connected_events > 0
+            debug.traceback "FORCE RECONNECTING AVATAR EVENTS", 2
+            @\disconnect_events!
+        
+        for event, function_list in pairs @data.events
+            if #function_list > 0
+                connection_name = @data.name .. "-" .. event .. tostring(#function_list)
+                cevents[event]\register ((...) ->
+                    for fun in *function_list
+                        fun ...), connection_name
+                @connected_events[event] = connection_name
+    
+    disconnect_events: =>
+        for event, connection_name in pairs @connected_events
+            cevents[event]\remove connection_name
     
     activate: (bool = true) =>
         @\setVisible bool
@@ -85,7 +109,9 @@ export class Avatar
             @nameplate\apply!
             for part, visibility in pairs @data.vanilla_model
                 vanilla_model[part]\setVisible visibility
+            @\connect_events!
         else
+            @\disconnect_events!
             Nameplate!\apply!
             vanilla_model.ALL\setVisible true
 
