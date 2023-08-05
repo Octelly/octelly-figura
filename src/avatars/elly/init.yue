@@ -1,8 +1,8 @@
 
 default_page = action_wheel\newPage "Root"
-action_wheel\setPage default_page
-action_wheel.rightClick = () ->
-    action_wheel\setPage default_page
+--action_wheel\setPage default_page
+-- action_wheel.rightClick = () ->
+--     action_wheel\setPage default_page
 
 {
     name: "Octelly"
