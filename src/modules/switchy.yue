@@ -2,7 +2,7 @@ current_preset = nil
 switchy_loaded = false
 import "modules.event_manager" as :new_event, :cevents
 
-if host\isHost! and switchy\registerSwitchListener != nil
+if host\isHost! and switchy != nil and switchy\registerSwitchListener != nil
     switchy_loaded = true
 
     dispatch_event = new_event "switchy_preset_changed"
