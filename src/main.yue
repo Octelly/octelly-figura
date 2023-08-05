@@ -39,6 +39,15 @@ if is_switchy_loaded!
             return
         pings.activate_avatar preset), "switchy_avatar_sync"
 
+-- fallback switching menu
+else
+    switch_page = action_wheel\newPage "Switch Avatar"
+    action_wheel\setPage switch_page
+    for key, avatar in pairs avatars
+        with switch_page\newAction!
+            \setTitle avatar.data.name
+            \setOnLeftClick (-> pings.activate_avatar key)
+
 -- sync active avatar to joining players
 cevents.new_player\register (() ->
     pings.activate_avatar active_avatar), "sync_avatar_to_new_players"
