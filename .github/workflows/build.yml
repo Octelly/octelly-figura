@@ -16,8 +16,6 @@ jobs:
       - name: Zip build output
         run: env -C build zip -r ../build.zip .
       - name: Upload build artifacts
-        uses: SierraSoftworks/gh-releases@v1.0.7
+        uses: actions/upload-artifact@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          overwrite: 'true'
-          files: build.zip
+          path: build.zip
