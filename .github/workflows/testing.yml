@@ -7,15 +7,12 @@ jobs:
     name: Check syntax
     runs-on: ubuntu-latest
     steps:
-      - name: Install LUA
-        uses: leafo/gh-actions-lua@v9
-        with:
-          luaVersion: "5.2"
-      - name: Install Luarocks
-        uses: leafo/gh-actions-luarocks@v4
-      - name: Install Yuescript
-        run: luarocks install yuescript
+      - name: Install Nix
+        uses: cachix/install-nix-action@v18
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Check syntax
-        run: yue -b src
+      - uses: workflow/nix-shell-action@v3
+        with:
+          flakes-from-devshell: true
+          script: |
+            python build.py
