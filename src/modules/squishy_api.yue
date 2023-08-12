@@ -1,0 +1,235 @@
+--- Rewritten Sqishy's API for personal use
+-- Based on https://github.com/MrSirSquishy/SquishyAPI/blob/427d801ec9ad0281eba4aa0adf71ce7083170a69/SquAPI.lua
+-- Modified to be better suited for use with multiple avatars in one (useful for plural systems)
+-- Also has more thorough documentation
+
+--- Get forward velocity
+-- @treturn number How fast the player is moving forward, negative means backwards
+get_forward_velocity = ->
+    player\getVelocity!\dot player\getLookDir!.x_z\normalize!
+
+--- Get vertical velocity
+-- @treturn number How fast the player is moving up, negative means down
+get_y_velocity = ->
+    player\getVelocity![2]
+
+--- Get side velocity
+-- @treturn number How fast the player is moving sideways, negative means left
+get_side_velocity = ->
+    player\getVelocity!\dot player\getLookDir!.z_x\normalize! 
+
+--- Bounce towards a target
+-- @tparam number current Current value
+-- @tparam number target Target value
+-- @tparam number stiffness How stiff the bounce is (lower = slower, lags behind)
+-- @tparam number bounciness How bouncy the bounce is
+-- @tparam number velocity Current velocity
+-- @treturn {number, number} The new current value and velocity
+bounce_towards = (current, target, stiffness, bounciness, velocity) ->
+    dif = target - current
+    velocity += ((dif - velocity * stiffness) * stiffness)
+    current = (current + velocity) + (dif *  bounciness)
+    return current, velocity
+
+class BounceObject
+    new: (object) =>
+        @velocity = 0
+        @position = 0
+    
+    do_bounce: (target, stiffness, bounciness) =>
+        @position, @velocity = bounce_towards @position, target, stiffness, bounciness, @velocity
+        return @position
+        
+
+
+
+--- Blinking animation
+-- @tparam Animation animation Animation to play
+-- @tparam number blink_interval_min Minimum interval between blinks
+-- @tparam number blink_interval_max Maximum interval between blinks
+-- @treturn table A table with events
+export blink = (animation, blink_interval_min, blink_interval_max) ->
+    delta = 0
+    event_tick = () ->
+        unless animation\isPlaying!
+            if delta >= blink_interval_min + math.floor(math.random!*(blink_interval_max-blink_interval_min))
+                delta = 0
+                animation\play!
+            delta += 1
+    {
+        TICK: {event_tick}
+    }
+
+--- Tail physics
+-- @tparam table tail_segments An array of ModelPart tail segments
+-- @tparam number intensity How much the tail moves when you rotate or move
+-- @tparam number tail_intensity_Y How much the tail moves up and down
+-- @tparam number tail_intensity_X How much the tail moves side to side
+-- @tparam number tail_Y_speed How fast the tail moves up and down
+-- @tparam number tail_X_speed How fast the tail moves side to side
+-- @tparam number tail_velocity_bend How much the tail bends when you move
+-- @tparam number initial_tail_offset Initial offset of the tail animation, useful for when you have multiple tails
+-- @tparam number segment_offset_multiplier How much each tail segment is offset from the previous one
+-- @tparam number tail_stiffness How stiff the tail is
+-- @tparam number tail_bounciness How bouncy the tail is
+-- @tparam number down_limit How far down the tail can go
+-- @tparam number up_limit How far up the tail can go
+-- @treturn table A table with events
+export tail = (tail_segments, intensity = 2, tail_intensity_Y = 15, tail_intensity_X = 5, tail_Y_speed = 2, tail_X_speed = 1.2, tail_velocity_bend = 0, initial_tail_offset = 0, segment_offset_multiplier = 1, tail_stiffness = 0.005, tail_bounciness = 0.05, down_limit = 10, up_limit = 40, wag_strength = 1) ->
+    if tail_segments == nil
+        error "No tail segments provided", 2
+
+    current_body_rotation = 0
+    old_body_rotation = 0
+    body_rotation_speed = 0
+
+    tailrot = {}
+    tailvel = {}
+    tailrotx = {}
+    tailvelx = {}
+
+    for _ in *tail_segments
+        tailrot[] = 0
+        tailvel[] = 0
+        tailrotx[] = 0
+        tailvelx[] = 0
+    
+    event_tick = () ->
+        old_body_rotation = current_body_rotation
+        current_body_rotation = player\getBodyYaw!
+        body_rotation_speed = current_body_rotation - old_body_rotation
+        body_rotation_speed = math.clamp body_rotation_speed, -20, 20
+    
+    event_render = (delta) ->
+        time = world.getTime! + delta
+        vel = get_forward_velocity!
+        yvel = get_y_velocity!
+        svel = get_side_velocity!
+
+        tail_intensity_Y -= math.abs(yvel*60) - vel*60
+
+        for i, tail in ipairs tail_segments
+            tail_target_Y = math.sin((time * tail_X_speed)/10 - i * segment_offset_multiplier + initial_tail_offset) * tail_intensity_Y
+            tail_target_X = math.sin((time * tail_Y_speed * wag_strength)/10 - i) * tail_intensity_X * wag_strength
+
+            tail_target_X += body_rotation_speed * intensity * 0.5
+            tail_target_Y += yvel * 10 * intensity - vel*intensity*50*tail_velocity_bend
+
+            if down_limit != nil
+                if tail_target_Y > down_limit
+                    tail_target_Y = down_limit
+            if up_limit != nil
+                if tail_target_Y < -up_limit
+                    tail_target_Y = -up_limit
+
+            tailrot[i], tailvel[i] = bounce_towards tailrot[i], tail_target_Y, tail_stiffness, tail_bounciness, tailvel[i]
+            tailrotx[i], tailvelx[i] = bounce_towards tailrotx[i], tail_target_X, tail_stiffness, tail_bounciness, tailvelx[i]
+
+            tail\setOffsetRot tailrot[i], tailrotx[i], 0
+
+    {
+        TICK: {event_tick}
+        RENDER: {event_render}
+    }
+
+--- Ear physics
+-- @tparam ModelPart element The ear model
+-- @tparam ModelPart element2 The second ear model, if you have two or aren't using a group
+-- @tparam boolean do_ear_flick Whether or not to flick your ears
+-- @tparam number ear_flick_chance How likely you are to flick your ears (1 in X)
+-- @tparam number range_multiplier How much the ears move; normal range is -90 to 90
+-- @tparam number ear_offset Default ear offset
+-- @tparam number bend_strength How much the ears bend when you move
+-- @tparam number ear_stiffness How stiff the ears are (0 - 1)
+-- @tparam number ear_bounciness How bouncy the ears are (0 - 1)
+export ears = (element, element2 = nil, do_ear_flick = true, ear_flick_chance = 200, range_multiplier = 1, ear_offset = 0, bend_strength = 2, ear_stiffness = 0.025, ear_bounciness = 0.1) ->
+    if element == nil
+        unless element2 != nil
+            error "No ears provided", 2
+
+        print debug.traceback "Only element2 provided, using it as element", 2
+        element = element2
+        element2 = nil
+    
+    ear_Y = BounceObject!
+    ear_X = BounceObject!
+    ear_X2 = BounceObject!
+
+    old_pose = "STANDING"
+
+    event_render = ->
+        vel = get_forward_velocity!
+        yvel = get_y_velocity!
+        svel = get_side_velocity!
+        head_rotation = (vanilla_model.HEAD\getOriginRot!+180)%360-180
+
+        bend = bend_strength
+        if head_rotation[1] < -22.5
+            bend *= -1
+        
+        pose = player\getPose!
+        if pose == "CROUCHING" and old_pose == "STANDING" then
+            ear_Y.velocity += 3 * bend_strength
+        elseif pose == "STANDING" and old_pose == "CROUCHING" then
+            ear_Y.velocity -= 3 * bend_strength
+        old_pose = pose
+
+        ear_Y.velocity += yvel * bend
+        ear_Y.velocity += vel * bend * 1.5
+
+        if do_ear_flick
+            if math.random(0, ear_flick_chance) == 1
+                if math.random(0, 1) == 1
+                    ear_X.velocity += 50
+                else
+                    vel = ear_X2.velocity - 50
+        
+        rot1 = ear_Y\do_bounce head_rotation[1] * range_multiplier, ear_stiffness, ear_bounciness
+        rot2 = ear_X\do_bounce head_rotation[2] * range_multiplier - svel*150*bend_strength, ear_stiffness, ear_bounciness
+        rot2b = ear_X2\do_bounce head_rotation[2] * range_multiplier - svel*150*bend_strength, ear_stiffness, ear_bounciness
+        rot3 = rot2/4
+        rot3b = rot2b/4
+
+        element\setOffsetRot rot1 + ear_offset, rot2/4, rot3
+        if element2 != nil
+            element2\setOffsetRot rot1 + ear_offset, rot2b/4, rot3b
+    
+    {
+        RENDER: {event_render}
+    }
+
+--- Breast physics
+-- @tparam ModelPart element The breasts
+-- @tparam boolean breathing Whether or not the breasts should do a breathing animation
+-- @tparam number bendability How much the breasts "bend" when you move
+-- @tparam number stiffness How stiff the breasts are (0 - 1)
+-- @tparam number bounciness How bouncy the breasts are (0 - 1)
+export breasts = (element, breathing = true, bendability = 2, stiffness = 0.025, bounciness = 0.06) ->
+    bounce_object = BounceObject!
+    target = 0
+
+    old_pose = "STANDING"
+
+    event_render = (delta) ->
+        vel = get_forward_velocity!
+        yvel = get_y_velocity!
+        time = world.getTime! + delta
+
+        if breathing
+            target = math.sin(time/8)*2*bendability
+        
+        pose = player\getPose!
+        if pose == "CROUCHING" and old_pose == "STANDING" then
+            bounce_object.velocity += bendability
+        elseif pose == "STANDING" and old_pose == "CROUCHING" then
+            bounce_object.velocity -= bendability
+        old_pose = pose
+
+        bounce_object.velocity -= yvel/2 * bendability
+        bounce_object.velocity -= vel/3 * bendability
+
+        element\setOffsetRot bounce_object\do_bounce(target, stiffness, bounciness), 0, 0
+        
+    {
+        RENDER: {event_render}
+    }
