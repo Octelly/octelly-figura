@@ -30,6 +30,7 @@
 						packages = [
 							python3Minimal
 							yuescript
+							blockbench-electron
 						];
 					};
 				}
