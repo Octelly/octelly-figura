@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # run Yue compiler on build dir
     print(str(BUILD_DIR))
-    status = subprocess.run(["yue", str(BUILD_DIR)])
+    status = subprocess.run(["yue", "-c", str(BUILD_DIR)])
 
     # delete Yue source files
     for file in BUILD_DIR.rglob("*.yue"):
