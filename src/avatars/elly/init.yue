@@ -1,8 +1,18 @@
+import "modules.squishy_api" as :ears, :tail
 
 default_page = action_wheel\newPage "Root"
 --action_wheel\setPage default_page
 -- action_wheel.rightClick = () ->
 --     action_wheel\setPage default_page
+
+tail_parts = {}
+with tail_parts
+    [1] = models.avatars.elly.elly.root.Body.Tail
+    [2] = [1].Part2
+    [3] = [2].Part3
+    [4] = [3].Part4
+
+squishy = table.concat(ears(models.avatars.elly.elly.root.Head.Ears.Left, models.avatars.elly.elly.root.Head.Ears.Right), tail(tail_parts, nil, 4, nil, nil, nil, nil, nil, nil, nil, nil, 4, 20))
 
 {
     name: "Octelly"
@@ -15,7 +25,7 @@ default_page = action_wheel\newPage "Root"
     vanilla_model: {
         PLAYER: false
     }
-    events: require("avatars.elly.halo")(
+    events: table.concat(require("avatars.elly.halo")(
         default_page, models.avatars.elly.halo
-    )
+    ), squishy)
 }
